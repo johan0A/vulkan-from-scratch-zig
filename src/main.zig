@@ -1,3 +1,22 @@
-const std = @import("std");
+// #include <vk_engine.h>
 
-pub fn main() !void {}
+// int main(int argc, char* argv[]) {
+// 	VulkanEngine engine;
+
+// 	engine.init();
+
+// 	engine.run();
+
+// 	engine.cleanup();
+
+// 	return 0;
+// }
+
+const std = @import("std");
+const vk_engine = @import("vk_engine.zig");
+
+pub fn main() !void {
+    const engine = try vk_engine.init(800, 800);
+    try engine.run();
+    engine.deInit();
+}
