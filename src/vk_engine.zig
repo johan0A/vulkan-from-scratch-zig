@@ -152,6 +152,6 @@ pub fn run(self: Self) !void {
 }
 
 pub fn deInit(self: Self) void {
-    glfw.terminate();
     self.window.destroy();
+    glfw.terminate();
 }
