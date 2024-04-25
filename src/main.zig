@@ -1,6 +1,8 @@
+// //> main
 // #include <vk_engine.h>
 
-// int main(int argc, char* argv[]) {
+// int main(int argc, char* argv[])
+// {
 // 	VulkanEngine engine;
 
 // 	engine.init();
@@ -11,6 +13,7 @@
 
 // 	return 0;
 // }
+// //< main
 
 const std = @import("std");
 const vk_engine = @import("vk_engine.zig");
