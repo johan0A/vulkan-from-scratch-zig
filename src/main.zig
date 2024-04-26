@@ -1,20 +1,3 @@
-// //> main
-// #include <vk_engine.h>
-
-// int main(int argc, char* argv[])
-// {
-// 	VulkanEngine engine;
-
-// 	engine.init();
-
-// 	engine.run();
-
-// 	engine.cleanup();
-
-// 	return 0;
-// }
-// //< main
-
 const std = @import("std");
 const vk_engine = @import("VkEngine.zig");
 
