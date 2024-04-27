@@ -2,11 +2,22 @@ const std = @import("std");
 const vk = @import("vulkan");
 const glfw = @import("mach-glfw");
 
+const device_builder = @import("device_builder.zig");
+const instance_builder = @import("instance_builder.zig");
+const swapchain_builder = @import("swapchain_builder.zig");
+
 const Self = @This();
+
+const app_name = "PLACEHOLDER_TITLE";
 
 window: glfw.Window,
 extent: vk.Extent2D,
 
+instance: vk.Instance,
+debug_messenger: vk.DebugUtilsMessengerEXT,
+chosenGPU: vk.PhysicalDevice,
+device: vk.Device,
+surface: vk.SurfaceKHR,
 
 allocator: std.mem.Allocator,
 
@@ -30,7 +41,7 @@ pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator)
     self.window = glfw.Window.create(
         self.extent.width,
         self.extent.height,
-        "PLACEHOLDER_TITLE",
+        app_name,
         null,
         null,
         .{
@@ -41,8 +52,37 @@ pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator)
         return error.glfwWindowCreateFail;
     };
 
+    try self.initVulkan();
+
+    try self.initSwapChain();
+
+    try self.initCommands();
+
+    try self.initSyncStructures();
+
     return self;
 }
+
+pub fn initVulkan(self: *Self) !void {
+    self.instance = try instance_builder.get_instance(self.allocator, app_name);
+}
+
+pub fn initSwapChain(self: Self) !void {
+    _ = self;
+}
+
+pub fn initCommands(self: Self) !void {
+    _ = self;
+}
+
+pub fn initSyncStructures(self: Self) !void {
+    _ = self;
+}
+
+pub fn draw(self: Self) !void {
+    _ = self;
+}
+
 pub fn run(self: Self) !void {
     while (!self.window.shouldClose()) {
         // Don't present render while the window is minimized
