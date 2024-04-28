@@ -2,24 +2,24 @@ const std = @import("std");
 const vk = @import("vulkan");
 const glfw = @import("mach-glfw");
 
-const device_builder = @import("device_builder.zig");
-const instance_builder = @import("instance_builder.zig");
-const swapchain_builder = @import("swapchain_builder.zig");
+const Swapchain = @import("swapchain.zig").Swapchain;
+const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
 
 const Self = @This();
 
 const app_name = "PLACEHOLDER_TITLE";
+
+allocator: std.mem.Allocator,
 
 window: glfw.Window,
 extent: vk.Extent2D,
 
 instance: vk.Instance,
 debug_messenger: vk.DebugUtilsMessengerEXT,
-chosenGPU: vk.PhysicalDevice,
-device: vk.Device,
-surface: vk.SurfaceKHR,
 
-allocator: std.mem.Allocator,
+gc: GraphicsContext,
+swapchain: Swapchain,
+
 
 pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator) !Self {
     var self: Self = undefined;
@@ -52,23 +52,15 @@ pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator)
         return error.glfwWindowCreateFail;
     };
 
-    try self.initVulkan();
+    self.gc = try GraphicsContext.init(allocator, app_name, self.window);
 
-    try self.initSwapChain();
+    self.swapchain = try Swapchain.init(&self.gc, allocator, self.extent);
 
-    try self.initCommands();
+    // try self.initCommands();
 
-    try self.initSyncStructures();
+    // try self.initSyncStructures();
 
     return self;
-}
-
-pub fn initVulkan(self: *Self) !void {
-    self.instance = try instance_builder.get_instance(self.allocator, app_name);
-}
-
-pub fn initSwapChain(self: Self) !void {
-    _ = self;
 }
 
 pub fn initCommands(self: Self) !void {
@@ -96,6 +88,8 @@ pub fn run(self: Self) !void {
 }
 
 pub fn deInit(self: Self) void {
+    self.swapchain.deinit();
+    self.gc.deinit();
     self.window.destroy();
     glfw.terminate();
 }
