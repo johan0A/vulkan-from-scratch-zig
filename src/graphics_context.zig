@@ -17,6 +17,7 @@ const optional_instance_extensions = [_][*:0]const u8{
 const BaseDispatch = vk.BaseWrapper(.{
     .createInstance = true,
     .enumerateInstanceExtensionProperties = true,
+    .enumerateInstanceLayerProperties = true,
     .getInstanceProcAddr = true,
 });
 
@@ -90,6 +91,11 @@ const DeviceDispatch = vk.DeviceWrapper(.{
 });
 
 pub const GraphicsContext = struct {
+    const Self = @This();
+
+    const validation_layers = [_][]const u8{"VK_LAYER_KHRONOS_validation"};
+    const use_validation_layers = builtin.mode == std.builtin.OptimizeMode.Debug;
+
     base_dispatch: BaseDispatch,
     instance_dispatch: InstanceDispatch,
     device_dispatch: DeviceDispatch,
@@ -104,8 +110,11 @@ pub const GraphicsContext = struct {
     graphics_queue: Queue,
     present_queue: Queue,
 
+    allocator: Allocator,
+
     pub fn init(allocator: Allocator, app_name: [*:0]const u8, window: glfw.Window) !GraphicsContext {
         var self: GraphicsContext = undefined;
+        self.allocator = allocator;
         self.base_dispatch = try BaseDispatch.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(&glfw.getInstanceProcAddress)));
 
         const glfw_exts = glfw.getRequiredInstanceExtensions() orelse return blk: {
@@ -145,13 +154,18 @@ pub const GraphicsContext = struct {
             .api_version = vk.makeApiVersion(0, 1, 1, 0),
         };
 
+        if (use_validation_layers and !try self.checkValidationLayerSupport()) {
+            std.log.err("validation layers requested, but not available!", .{});
+            return error.ValidationLayersNotAvailable;
+        }
+
         self.instance = try self.base_dispatch.createInstance(&vk.InstanceCreateInfo{
             .flags = if (builtin.os.tag == .macos) .{
                 .enumerate_portability_bit_khr = true,
             } else .{},
             .p_application_info = &app_info,
-            .enabled_layer_count = 0,
-            .pp_enabled_layer_names = undefined,
+            .enabled_layer_count = if (use_validation_layers) validation_layers.len else 0,
+            .pp_enabled_layer_names = if (use_validation_layers) @ptrCast(&validation_layers) else undefined,
             .enabled_extension_count = @intCast(instance_extensions.items.len),
             .pp_enabled_extension_names = @ptrCast(instance_extensions.items),
         }, null);
@@ -177,18 +191,18 @@ pub const GraphicsContext = struct {
         return self;
     }
 
-    pub fn deinit(self: GraphicsContext) void {
+    pub fn deinit(self: Self) void {
         self.device_dispatch.destroyDevice(self.device, null);
         self.instance_dispatch.destroySurfaceKHR(self.instance, self.surface, null);
         self.instance_dispatch.destroyInstance(self.instance, null);
     }
 
-    pub fn deviceName(self: GraphicsContext) []const u8 {
+    pub fn deviceName(self: Self) []const u8 {
         const len = std.mem.indexOfScalar(u8, &self.phys_device_props.device_name, 0).?;
         return self.phys_device_props.device_name[0..len];
     }
 
-    pub fn findMemoryTypeIndex(self: GraphicsContext, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
+    pub fn findMemoryTypeIndex(self: Self, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
         for (self.phys_device_mem_props.memory_types[0..self.phys_device_mem_props.memory_type_count], 0..) |mem_type, i| {
             if (memory_type_bits & (@as(u32, 1) << @as(u5, @truncate(i))) != 0 and mem_type.property_flags.contains(flags)) {
                 return @as(u32, @truncate(i));
@@ -198,11 +212,32 @@ pub const GraphicsContext = struct {
         return error.NoSuitableMemoryType;
     }
 
-    pub fn allocate(self: GraphicsContext, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
+    pub fn allocate(self: Self, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
         return try self.device_dispatch.allocateMemory(self.device, &.{
             .allocation_size = requirements.size,
             .memory_type_index = try self.findMemoryTypeIndex(requirements.memory_type_bits, flags),
         }, null);
+    }
+
+    fn checkValidationLayerSupport(self: Self) !bool {
+        var layer_count: u32 = undefined;
+        _ = try self.base_dispatch.enumerateInstanceLayerProperties(&layer_count, null);
+
+        const available_layers = try self.allocator.alloc(vk.LayerProperties, layer_count);
+        defer self.allocator.free(available_layers);
+
+        _ = try self.base_dispatch.enumerateInstanceLayerProperties(&layer_count, @ptrCast(available_layers));
+
+        for (validation_layers) |layer_name| {
+            for (available_layers) |layer_properties| {
+                if (std.mem.eql(u8, layer_properties.layer_name[0..layer_name.len], layer_name)) {
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 };
 
