@@ -7,19 +7,26 @@ const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
 
 const Self = @This();
 
+const FrameData = struct {
+    command_pool: vk.CommandPool,
+    main_command_buffer: vk.CommandBuffer,
+};
+
+const frame_overlap = 2;
 const app_name = "PLACEHOLDER_TITLE";
 
 allocator: std.mem.Allocator,
 
 window: glfw.Window,
-extent: vk.Extent2D,
 
-instance: vk.Instance,
+extent: vk.Extent2D,
 debug_messenger: vk.DebugUtilsMessengerEXT,
 
 gc: GraphicsContext,
 swapchain: Swapchain,
 
+frames: [frame_overlap]FrameData,
+frame_number: u32,
 
 pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator) !Self {
     var self: Self = undefined;
@@ -54,17 +61,39 @@ pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator)
 
     self.gc = try GraphicsContext.init(allocator, app_name, self.window);
 
-    self.swapchain = try Swapchain.init(&self.gc, allocator, self.extent);
+    // self.swapchain = try Swapchain.init(&self.gc, allocator, self.extent);
 
-    // try self.initCommands();
+    try self.initCommands();
 
     // try self.initSyncStructures();
 
     return self;
 }
 
-pub fn initCommands(self: Self) !void {
-    _ = self;
+pub fn initCommands(self: *Self) !void {
+    const commandPoolInfo = vk.CommandPoolCreateInfo{
+        .flags = .{ .reset_command_buffer_bit = true },
+        .queue_family_index = self.gc.graphics_queue.family,
+    };
+    for (&self.frames) |*frame| {
+        frame.command_pool = try self.gc.device_dispatch.createCommandPool(
+            self.gc.device,
+            &commandPoolInfo,
+            null,
+        );
+        errdefer self.gc.device_dispatch.destroyCommandPool(self.gc.device, frame.command_pool, null);
+
+        const cmd_alloc_info = vk.CommandBufferAllocateInfo{
+            .command_pool = frame.command_pool,
+            .command_buffer_count = 1,
+            .level = .primary,
+        };
+        try self.gc.device_dispatch.allocateCommandBuffers(
+            self.gc.device,
+            &cmd_alloc_info,
+            @ptrCast(&frame.main_command_buffer),
+        );
+    }
 }
 
 pub fn initSyncStructures(self: Self) !void {
@@ -87,8 +116,16 @@ pub fn run(self: Self) !void {
     }
 }
 
-pub fn deInit(self: Self) void {
-    self.swapchain.deinit();
+pub fn getCurrentFrame(self: Self) *FrameData {
+    return &self.frames[self.frame_number % frame_overlap];
+}
+
+pub fn deInit(self: Self) !void {
+    try self.gc.device_dispatch.deviceWaitIdle(self.gc.device);
+    for (self.frames) |frame| {
+        self.gc.device_dispatch.destroyCommandPool(self.gc.device, frame.command_pool, null);
+    }
+    // self.swapchain.deinit();
     self.gc.deinit();
     self.window.destroy();
     glfw.terminate();
