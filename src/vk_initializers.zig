@@ -16,7 +16,7 @@ const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
 
 const Self = @This();
 
-pub fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags) !vk.CommandPoolCreateInfo {
+pub fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags) vk.CommandPoolCreateInfo {
     return vk.CommandPoolCreateInfo{
         .flags = flags,
         .queue_family_index = queueFamilyIndex,
