@@ -38,7 +38,7 @@ fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags
 //     return info;
 // }
 
-fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) !vk.CommandBufferAllocateInfo {
+fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) vk.CommandBufferAllocateInfo {
     return vk.CommandBufferAllocateInfo{
         .command_pool = pool,
         .command_buffer_count = count,
@@ -57,7 +57,7 @@ fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) !vk.CommandBuffer
 //     return info;
 // }
 
-fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) !vk.CommandBufferBeginInfo {
+fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) vk.CommandBufferBeginInfo {
     return vk.CommandBufferBeginInfo{
         .flags = flags,
     };
@@ -74,7 +74,7 @@ fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) !vk.CommandBufferBe
 //     return info;
 // }
 
-fn fenceCreateInfo(flags: vk.FenceCreateFlags) !vk.FenceCreateInfo {
+fn fenceCreateInfo(flags: vk.FenceCreateFlags) vk.FenceCreateInfo {
     return vk.FenceCreateInfo{
         .flags = flags,
     };
@@ -89,7 +89,7 @@ fn fenceCreateInfo(flags: vk.FenceCreateFlags) !vk.FenceCreateInfo {
 //     return info;
 // }
 
-fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) !vk.SemaphoreCreateInfo {
+fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) vk.SemaphoreCreateInfo {
     return vk.SemaphoreCreateInfo{
         .flags = flags,
     };
@@ -108,7 +108,7 @@ fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) !vk.SemaphoreCreateInfo {
 // 	return submitInfo;
 // }
 
-fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphore) !vk.SemaphoreSubmitInfo {
+fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphore) vk.SemaphoreSubmitInfo {
     return vk.SemaphoreSubmitInfo{
         .semaphore = semaphore,
         .stage_mask = stageMask,
@@ -128,7 +128,7 @@ fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphor
 // 	return info;
 // }
 
-fn commandBufferSubmitInfo(command_buffer: vk.CommandBuffer) !vk.SubmitInfo {
+fn commandBufferSubmitInfo(command_buffer: vk.CommandBuffer) vk.SubmitInfo {
     return vk.SubmitInfo{
         .p_command_buffers = &command_buffer,
     };
@@ -157,7 +157,7 @@ fn submitInfo(
     command_buffer: vk.SubmitInfoCommandBuffer,
     signal_semaphore_info: ?vk.SemaphoreSubmitInfo,
     wait_semaphore_info: ?vk.SemaphoreSubmitInfo,
-) !vk.SubmitInfo {
+) vk.SubmitInfo {
     return vk.SubmitInfo2{
         .p_command_buffers = &command_buffer,
         .wait_semaphore_info_count = wait_semaphore_info orelse 0,
@@ -182,7 +182,7 @@ fn submitInfo(
 //     return info;
 // }
 
-fn presentInfo() !vk.PresentInfoKHR {
+fn presentInfo() vk.PresentInfoKHR {
     return vk.PresentInfoKHR{
         .swapchain_count = 0,
         .p_swapchains = null,
@@ -214,7 +214,7 @@ fn attachmentInfo(
     view: vk.ImageView,
     clear: vk.ClearValue,
     layout: ?vk.ImageLayout,
-) !vk.RenderingAttachmentInfo {
+) vk.RenderingAttachmentInfo {
     return vk.RenderingAttachmentInfo{
         .image_view = view,
         .image_layout = layout orelse .color_attachment_optimal,
@@ -240,7 +240,7 @@ fn attachmentInfo(
 //     return depthAttachment;
 // }
 
-fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) !vk.RenderingAttachmentInfo {
+fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) vk.RenderingAttachmentInfo {
     return vk.RenderingAttachmentInfo{
         .image_view = view,
         .image_layout = layout orelse .color_attachment_optimal,
@@ -276,7 +276,7 @@ fn renderingInfo(
     render_extent: vk.Extent2D,
     color_attachment: vk.RenderingAttachmentInfo,
     depth_attachment: vk.RenderingAttachmentInfo,
-) !vk.RenderingInfo {
+) vk.RenderingInfo {
     return vk.RenderingInfo{
         .render_area = vk.Rect2D{
             .offset = vk.Offset2D{ .x = 0, .y = 0 },
@@ -301,7 +301,7 @@ fn renderingInfo(
 //     return subImage;
 // }
 
-fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) !vk.ImageSubresourceRange {
+fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) vk.ImageSubresourceRange {
     return vk.ImageSubresourceRange{
         .aspect_mask = aspect_mask,
         .base_mip_level = 0,
@@ -328,7 +328,7 @@ fn descriptorSetLayoutBinding(
     descriptor_type: vk.DescriptorType,
     stage_flags: vk.ShaderStageFlags,
     binding: u32,
-) !vk.DescriptorSetLayoutBinding {
+) vk.DescriptorSetLayoutBinding {
     return vk.DescriptorSetLayoutBinding{
         .binding = binding,
         .descriptor_count = 1,
@@ -353,7 +353,7 @@ fn descriptorSetLayoutBinding(
 
 fn descriptorSetLayoutCreateInfo(
     bindings: []vk.DescriptorSetLayoutBinding,
-) !vk.DescriptorSetLayoutCreateInfo {
+) vk.DescriptorSetLayoutCreateInfo {
     return vk.DescriptorSetLayoutCreateInfo{
         .p_bindings = bindings.ptr,
         .binding_count = bindings.len,
@@ -381,7 +381,7 @@ fn writeDescriptorImage(
     dst_set: vk.DescriptorSet,
     image_info: vk.DescriptorImageInfo,
     binding: u32,
-) !vk.WriteDescriptorSet {
+) vk.WriteDescriptorSet {
     return vk.WriteDescriptorSet{
         .dst_binding = binding,
         .dst_set = dst_set,
@@ -412,7 +412,7 @@ fn writeDescriptorBuffer(
     dst_set: vk.DescriptorSet,
     buffer_info: vk.DescriptorBufferInfo,
     binding: u32,
-) !vk.WriteDescriptorSet {
+) vk.WriteDescriptorSet {
     return vk.WriteDescriptorSet{
         .dst_binding = binding,
         .dst_set = dst_set,
@@ -431,7 +431,7 @@ fn writeDescriptorBuffer(
 //     return binfo;
 // }
 
-fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) !vk.DescriptorBufferInfo {
+fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) vk.DescriptorBufferInfo {
     return vk.DescriptorBufferInfo{
         .buffer = buffer,
         .offset = offset,
@@ -467,7 +467,7 @@ fn imageCreateInfo(
     format: vk.Format,
     usage_flags: vk.ImageUsageFlags,
     extent: vk.Extent3D,
-) !vk.ImageCreateInfo {
+) vk.ImageCreateInfo {
     return vk.ImageCreateInfo{
         .image_type = .@"2d",
         .format = format,
@@ -503,7 +503,7 @@ fn imageViewCreateInfo(
     format: vk.Format,
     image: vk.Image,
     aspect_flags: vk.ImageAspectFlags,
-) !vk.ImageViewCreateInfo {
+) vk.ImageViewCreateInfo {
     return vk.ImageViewCreateInfo{
         .view_type = .@"2d",
         .image = image,
@@ -533,7 +533,7 @@ fn imageViewCreateInfo(
 //     return info;
 // }
 
-fn pipelineLayoutCreateInfo() !vk.PipelineLayoutCreateInfo {
+fn pipelineLayoutCreateInfo() vk.PipelineLayoutCreateInfo {
     return vk.PipelineLayoutCreateInfo{};
 }
 
@@ -558,7 +558,7 @@ fn pipelineShaderStageCreateInfo(
     stage: vk.ShaderStageFlagBits,
     shader_module: vk.ShaderModule,
     entry: []const u8,
-) !vk.PipelineShaderStageCreateInfo {
+) vk.PipelineShaderStageCreateInfo {
     return vk.PipelineShaderStageCreateInfo{
         .stage = stage,
         .module = shader_module,

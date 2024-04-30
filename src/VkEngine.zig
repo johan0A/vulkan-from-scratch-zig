@@ -4,6 +4,7 @@ const glfw = @import("mach-glfw");
 const Swapchain = @import("swapchain.zig").Swapchain;
 const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
 const vk = @import("vulkan.zig");
+const vk_initializers = @import("vk_initializers.zig");
 
 const Self = @This();
 
@@ -86,11 +87,8 @@ pub fn initCommands(self: *Self) !void {
         );
         errdefer self.gc.device_dispatch.destroyCommandPool(self.gc.device, frame.command_pool, null);
 
-        const cmd_alloc_info = vk.CommandBufferAllocateInfo{
-            .command_pool = frame.command_pool,
-            .command_buffer_count = 1,
-            .level = .primary,
-        };
+        const cmd_alloc_info = vk_initializers.commandBufferAllocateInfo(frame.command_pool, 1);
+
         try self.gc.device_dispatch.allocateCommandBuffers(
             self.gc.device,
             &cmd_alloc_info,
