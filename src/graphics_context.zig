@@ -9,24 +9,14 @@ const optional_device_extensions = [_][*:0]const u8{};
 
 const optional_instance_extensions = [_][*:0]const u8{vk.extensions.khr_get_physical_device_properties_2.name};
 
-/// To construct base, instance and device wrappers for vulkan-zig, you need to pass a list of 'apis' to it.
 const apis: []const vk.ApiInfo = &.{
-    // You can either add invidiual functions by manually creating an 'api'
-    .{
-        .base_commands = .{
-            .createInstance = true,
-        },
-        .instance_commands = .{
-            .createDevice = true,
-        },
-    },
-    // Or you can add entire feature sets or extensions
+    // add entire feature sets or extensions
     vk.features.version_1_0,
     vk.extensions.khr_surface,
     vk.extensions.khr_swapchain,
 };
 
-/// Next, pass the `apis` to the wrappers to create dispatch tables.
+/// pass the `apis` to the wrappers to create dispatch tables.
 const BaseDispatch = vk.BaseWrapper(apis);
 const InstanceDispatch = vk.InstanceWrapper(apis);
 const DeviceDispatch = vk.DeviceWrapper(apis);
