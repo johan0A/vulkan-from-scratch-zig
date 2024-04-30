@@ -16,7 +16,7 @@ const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
 
 const Self = @This();
 
-fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags) !vk.CommandPoolCreateInfo {
+pub fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags) !vk.CommandPoolCreateInfo {
     return vk.CommandPoolCreateInfo{
         .flags = flags,
         .queue_family_index = queueFamilyIndex,
@@ -36,7 +36,7 @@ fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags
 //     return info;
 // }
 
-fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) vk.CommandBufferAllocateInfo {
+pub fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) vk.CommandBufferAllocateInfo {
     return vk.CommandBufferAllocateInfo{
         .command_pool = pool,
         .command_buffer_count = count,
@@ -55,7 +55,7 @@ fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) vk.CommandBufferA
 //     return info;
 // }
 
-fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) vk.CommandBufferBeginInfo {
+pub fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) vk.CommandBufferBeginInfo {
     return vk.CommandBufferBeginInfo{
         .flags = flags,
     };
@@ -72,7 +72,7 @@ fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) vk.CommandBufferBeg
 //     return info;
 // }
 
-fn fenceCreateInfo(flags: vk.FenceCreateFlags) vk.FenceCreateInfo {
+pub fn fenceCreateInfo(flags: vk.FenceCreateFlags) vk.FenceCreateInfo {
     return vk.FenceCreateInfo{
         .flags = flags,
     };
@@ -87,7 +87,7 @@ fn fenceCreateInfo(flags: vk.FenceCreateFlags) vk.FenceCreateInfo {
 //     return info;
 // }
 
-fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) vk.SemaphoreCreateInfo {
+pub fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) vk.SemaphoreCreateInfo {
     return vk.SemaphoreCreateInfo{
         .flags = flags,
     };
@@ -106,7 +106,7 @@ fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) vk.SemaphoreCreateInfo {
 // 	return submitInfo;
 // }
 
-fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphore) vk.SemaphoreSubmitInfo {
+pub fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphore) vk.SemaphoreSubmitInfo {
     return vk.SemaphoreSubmitInfo{
         .semaphore = semaphore,
         .stage_mask = stageMask,
@@ -126,7 +126,7 @@ fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphor
 // 	return info;
 // }
 
-fn commandBufferSubmitInfo(command_buffer: vk.CommandBuffer) vk.SubmitInfo {
+pub fn commandBufferSubmitInfo(command_buffer: vk.CommandBuffer) vk.SubmitInfo {
     return vk.SubmitInfo{
         .p_command_buffers = &command_buffer,
     };
@@ -151,7 +151,7 @@ fn commandBufferSubmitInfo(command_buffer: vk.CommandBuffer) vk.SubmitInfo {
 //     return info;
 // }
 
-fn submitInfo(
+pub fn submitInfo(
     command_buffer: vk.SubmitInfoCommandBuffer,
     signal_semaphore_info: ?vk.SemaphoreSubmitInfo,
     wait_semaphore_info: ?vk.SemaphoreSubmitInfo,
@@ -180,7 +180,7 @@ fn submitInfo(
 //     return info;
 // }
 
-fn presentInfo() vk.PresentInfoKHR {
+pub fn presentInfo() vk.PresentInfoKHR {
     return vk.PresentInfoKHR{
         .swapchain_count = 0,
         .p_swapchains = null,
@@ -208,7 +208,7 @@ fn presentInfo() vk.PresentInfoKHR {
 //     return colorAttachment;
 // }
 
-fn attachmentInfo(
+pub fn attachmentInfo(
     view: vk.ImageView,
     clear: vk.ClearValue,
     layout: ?vk.ImageLayout,
@@ -238,7 +238,7 @@ fn attachmentInfo(
 //     return depthAttachment;
 // }
 
-fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) vk.RenderingAttachmentInfo {
+pub fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) vk.RenderingAttachmentInfo {
     return vk.RenderingAttachmentInfo{
         .image_view = view,
         .image_layout = layout orelse .color_attachment_optimal,
@@ -270,7 +270,7 @@ fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) vk.Rendering
 //     return renderInfo;
 // }
 
-fn renderingInfo(
+pub fn renderingInfo(
     render_extent: vk.Extent2D,
     color_attachment: vk.RenderingAttachmentInfo,
     depth_attachment: vk.RenderingAttachmentInfo,
@@ -299,7 +299,7 @@ fn renderingInfo(
 //     return subImage;
 // }
 
-fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) vk.ImageSubresourceRange {
+pub fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) vk.ImageSubresourceRange {
     return vk.ImageSubresourceRange{
         .aspect_mask = aspect_mask,
         .base_mip_level = 0,
@@ -322,7 +322,7 @@ fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) vk.ImageSubresourceRa
 //     return setbind;
 // }
 
-fn descriptorSetLayoutBinding(
+pub fn descriptorSetLayoutBinding(
     descriptor_type: vk.DescriptorType,
     stage_flags: vk.ShaderStageFlags,
     binding: u32,
@@ -349,7 +349,7 @@ fn descriptorSetLayoutBinding(
 //     return info;
 // }
 
-fn descriptorSetLayoutCreateInfo(
+pub fn descriptorSetLayoutCreateInfo(
     bindings: []vk.DescriptorSetLayoutBinding,
 ) vk.DescriptorSetLayoutCreateInfo {
     return vk.DescriptorSetLayoutCreateInfo{
@@ -374,7 +374,7 @@ fn descriptorSetLayoutCreateInfo(
 //     return write;
 // }
 
-fn writeDescriptorImage(
+pub fn writeDescriptorImage(
     descriptor_type: vk.DescriptorType,
     dst_set: vk.DescriptorSet,
     image_info: vk.DescriptorImageInfo,
@@ -405,7 +405,7 @@ fn writeDescriptorImage(
 //     return write;
 // }
 
-fn writeDescriptorBuffer(
+pub fn writeDescriptorBuffer(
     descriptor_type: vk.DescriptorType,
     dst_set: vk.DescriptorSet,
     buffer_info: vk.DescriptorBufferInfo,
@@ -429,7 +429,7 @@ fn writeDescriptorBuffer(
 //     return binfo;
 // }
 
-fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) vk.DescriptorBufferInfo {
+pub fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) vk.DescriptorBufferInfo {
     return vk.DescriptorBufferInfo{
         .buffer = buffer,
         .offset = offset,
@@ -461,7 +461,7 @@ fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) vk
 //     return info;
 // }
 
-fn imageCreateInfo(
+pub fn imageCreateInfo(
     format: vk.Format,
     usage_flags: vk.ImageUsageFlags,
     extent: vk.Extent3D,
@@ -497,7 +497,7 @@ fn imageCreateInfo(
 //     return info;
 // }
 
-fn imageViewCreateInfo(
+pub fn imageViewCreateInfo(
     format: vk.Format,
     image: vk.Image,
     aspect_flags: vk.ImageAspectFlags,
@@ -531,7 +531,7 @@ fn imageViewCreateInfo(
 //     return info;
 // }
 
-fn pipelineLayoutCreateInfo() vk.PipelineLayoutCreateInfo {
+pub fn pipelineLayoutCreateInfo() vk.PipelineLayoutCreateInfo {
     return vk.PipelineLayoutCreateInfo{};
 }
 
@@ -552,7 +552,7 @@ fn pipelineLayoutCreateInfo() vk.PipelineLayoutCreateInfo {
 //     return info;
 // }
 
-fn pipelineShaderStageCreateInfo(
+pub fn pipelineShaderStageCreateInfo(
     stage: vk.ShaderStageFlagBits,
     shader_module: vk.ShaderModule,
     entry: []const u8,

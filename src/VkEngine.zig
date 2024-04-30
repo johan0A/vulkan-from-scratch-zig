@@ -75,25 +75,20 @@ pub fn init(window_height: u32, window_width: u32, allocator: std.mem.Allocator)
 }
 
 pub fn initCommands(self: *Self) !void {
-    const commandPoolInfo = vk.CommandPoolCreateInfo{
-        .flags = .{ .reset_command_buffer_bit = true },
-        .queue_family_index = self.gc.graphics_queue.family,
-    };
     for (&self.frames) |*frame| {
         frame.command_pool = try self.gc.device_dispatch.createCommandPool(
             self.gc.device,
-            &commandPoolInfo,
+            &vk_initializers.commandPoolCreateInfo(self.gc.graphics_queue.family, .{ .reset_command_buffer_bit = true }),
             null,
         );
         errdefer self.gc.device_dispatch.destroyCommandPool(self.gc.device, frame.command_pool, null);
 
-        const cmd_alloc_info = vk_initializers.commandBufferAllocateInfo(frame.command_pool, 1);
-
         try self.gc.device_dispatch.allocateCommandBuffers(
             self.gc.device,
-            &cmd_alloc_info,
+            &vk_initializers.commandBufferAllocateInfo(frame.command_pool, 1),
             @ptrCast(&frame.main_command_buffer),
         );
+        // errdefer self.gc.device_dispatch.freeCommandBuffers(self.gc.device, frame.command_pool, 1, &frame.main_command_buffer);
     }
 }
 
