@@ -47,7 +47,6 @@ pub const Swapchain = struct {
             .exclusive;
 
         const handle = try gc.device_dispatch.createSwapchainKHR(gc.device, &.{
-            .flags = .{},
             .surface = gc.surface,
             .min_image_count = image_count,
             .image_format = surface_format.format,
@@ -72,9 +71,12 @@ pub const Swapchain = struct {
         }
 
         const swap_images = try initSwapchainImages(gc, handle, surface_format.format, allocator);
-        errdefer for (swap_images) |si| si.deinit(gc);
+        errdefer {
+            for (swap_images) |si| si.deinit(gc);
+            allocator.free(swap_images);
+        }
 
-        var next_image_acquired = try gc.device_dispatch.createSemaphore(gc.device, &.{ .flags = .{} }, null);
+        var next_image_acquired = try gc.device_dispatch.createSemaphore(gc.device, &.{}, null);
         errdefer gc.device_dispatch.destroySemaphore(gc.device, next_image_acquired, null);
 
         const result = try gc.device_dispatch.acquireNextImageKHR(gc.device, handle, std.math.maxInt(u64), next_image_acquired, .null_handle);
@@ -98,6 +100,7 @@ pub const Swapchain = struct {
 
     fn deinitExceptSwapchain(self: Swapchain) void {
         for (self.swap_images) |si| si.deinit(self.gc);
+        self.allocator.free(self.swap_images);
         self.gc.device_dispatch.destroySemaphore(self.gc.device, self.next_image_acquired, null);
     }
 
@@ -162,13 +165,12 @@ pub const Swapchain = struct {
         }}, current.frame_fence);
 
         // Step 3: Present the current frame
-        _ = try self.gc.device_dispatch.queuePresentKHR(self.gc.present_queue.handle, &vk.PresentInfoKHR{
+        _ = try self.gc.device_dispatch.queuePresentKHR(self.gc.present_queue.handle, &.{
             .wait_semaphore_count = 1,
-            .p_wait_semaphores = @ptrCast(&current.render_finished),
+            .p_wait_semaphores = @as([*]const vk.Semaphore, @ptrCast(&current.render_finished)),
             .swapchain_count = 1,
-            .p_swapchains = @ptrCast(&self.handle),
-            .p_image_indices = @ptrCast(&self.image_index),
-            .p_results = null,
+            .p_swapchains = @as([*]const vk.SwapchainKHR, @ptrCast(&self.handle)),
+            .p_image_indices = @as([*]const u32, @ptrCast(&self.image_index)),
         });
 
         // Step 4: Acquire next frame
@@ -200,7 +202,6 @@ const SwapImage = struct {
 
     fn init(gc: *const GraphicsContext, image: vk.Image, format: vk.Format) !SwapImage {
         const view = try gc.device_dispatch.createImageView(gc.device, &.{
-            .flags = .{},
             .image = image,
             .view_type = .@"2d",
             .format = format,
@@ -215,10 +216,10 @@ const SwapImage = struct {
         }, null);
         errdefer gc.device_dispatch.destroyImageView(gc.device, view, null);
 
-        const image_acquired = try gc.device_dispatch.createSemaphore(gc.device, &.{ .flags = .{} }, null);
+        const image_acquired = try gc.device_dispatch.createSemaphore(gc.device, &.{}, null);
         errdefer gc.device_dispatch.destroySemaphore(gc.device, image_acquired, null);
 
-        const render_finished = try gc.device_dispatch.createSemaphore(gc.device, &.{ .flags = .{} }, null);
+        const render_finished = try gc.device_dispatch.createSemaphore(gc.device, &.{}, null);
         errdefer gc.device_dispatch.destroySemaphore(gc.device, render_finished, null);
 
         const frame_fence = try gc.device_dispatch.createFence(gc.device, &.{ .flags = .{ .signaled_bit = true } }, null);
