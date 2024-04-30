@@ -18,9 +18,9 @@ const Self = @This();
 
 gc: GraphicsContext,
 
-fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: ?vk.CommandPoolCreateFlags) !vk.CommandPoolCreateInfo {
+fn commandPoolCreateInfo(queueFamilyIndex: u32, flags: vk.CommandPoolCreateFlags) !vk.CommandPoolCreateInfo {
     return vk.CommandPoolCreateInfo{
-        .flags = flags orelse .{},
+        .flags = flags,
         .queue_family_index = queueFamilyIndex,
     };
 }
@@ -57,9 +57,9 @@ fn commandBufferAllocateInfo(pool: vk.CommandPool, count: u32) !vk.CommandBuffer
 //     return info;
 // }
 
-fn commandBufferBeginInfo(flags: ?vk.CommandBufferUsageFlags) !vk.CommandBufferBeginInfo {
+fn commandBufferBeginInfo(flags: vk.CommandBufferUsageFlags) !vk.CommandBufferBeginInfo {
     return vk.CommandBufferBeginInfo{
-        .flags = flags orelse .{},
+        .flags = flags,
     };
 }
 
@@ -74,9 +74,9 @@ fn commandBufferBeginInfo(flags: ?vk.CommandBufferUsageFlags) !vk.CommandBufferB
 //     return info;
 // }
 
-fn fenceCreateInfo(flags: ?vk.FenceCreateFlags) !vk.FenceCreateInfo {
+fn fenceCreateInfo(flags: vk.FenceCreateFlags) !vk.FenceCreateInfo {
     return vk.FenceCreateInfo{
-        .flags = flags orelse .{},
+        .flags = flags,
     };
 }
 
@@ -89,9 +89,9 @@ fn fenceCreateInfo(flags: ?vk.FenceCreateFlags) !vk.FenceCreateInfo {
 //     return info;
 // }
 
-fn semaphoreCreateInfo(flags: ?vk.SemaphoreCreateFlags) !vk.SemaphoreCreateInfo {
+fn semaphoreCreateInfo(flags: vk.SemaphoreCreateFlags) !vk.SemaphoreCreateInfo {
     return vk.SemaphoreCreateInfo{
-        .flags = flags orelse .{},
+        .flags = flags,
     };
 }
 
@@ -108,7 +108,7 @@ fn semaphoreCreateInfo(flags: ?vk.SemaphoreCreateFlags) !vk.SemaphoreCreateInfo 
 // 	return submitInfo;
 // }
 
-fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags, semaphore: vk.Semaphore) !vk.SemaphoreSubmitInfo {
+fn semaphoreSubmitInfo(stageMask: vk.PipelineStageFlags2, semaphore: vk.Semaphore) !vk.SemaphoreSubmitInfo {
     return vk.SemaphoreSubmitInfo{
         .semaphore = semaphore,
         .stage_mask = stageMask,
@@ -158,7 +158,7 @@ fn submitInfo(
     signal_semaphore_info: ?vk.SemaphoreSubmitInfo,
     wait_semaphore_info: ?vk.SemaphoreSubmitInfo,
 ) !vk.SubmitInfo {
-    return vk.SubmitInfo{
+    return vk.SubmitInfo2{
         .p_command_buffers = &command_buffer,
         .wait_semaphore_info_count = wait_semaphore_info orelse 0,
         .p_wait_semaphore_infos = wait_semaphore_info orelse null,
@@ -212,7 +212,7 @@ fn presentInfo() !vk.PresentInfoKHR {
 
 fn attachmentInfo(
     view: vk.ImageView,
-    clear: ?vk.ClearValue,
+    clear: vk.ClearValue,
     layout: ?vk.ImageLayout,
 ) !vk.RenderingAttachmentInfo {
     return vk.RenderingAttachmentInfo{
@@ -220,7 +220,7 @@ fn attachmentInfo(
         .image_layout = layout orelse .color_attachment_optimal,
         .load_op = if (clear) vk.AttachmentLoadOp.clear else vk.AttachmentLoadOp.load,
         .store_op = .store,
-        .clear_value = clear orelse .{},
+        .clear_value = clear,
     };
 }
 
@@ -239,6 +239,22 @@ fn attachmentInfo(
 
 //     return depthAttachment;
 // }
+
+fn depthAttachmentInfo(view: vk.ImageView, layout: ?vk.ImageLayout) !vk.RenderingAttachmentInfo {
+    return vk.RenderingAttachmentInfo{
+        .image_view = view,
+        .image_layout = layout orelse .color_attachment_optimal,
+        .load_op = .clear,
+        .store_op = .store,
+        .clear_value = vk.ClearValue{
+            .depth_stencil = vk.ClearDepthStencilValue{
+                .depth = 0.0,
+                .stencil = 0,
+            },
+        },
+    };
+}
+
 // VkRenderingInfo vkinit::rendering_info(VkExtent2D renderExtent, VkRenderingAttachmentInfo* colorAttachment,
 //     VkRenderingAttachmentInfo* depthAttachment)
 // {
@@ -255,6 +271,24 @@ fn attachmentInfo(
 
 //     return renderInfo;
 // }
+
+fn renderingInfo(
+    render_extent: vk.Extent2D,
+    color_attachment: vk.RenderingAttachmentInfo,
+    depth_attachment: vk.RenderingAttachmentInfo,
+) !vk.RenderingInfo {
+    return vk.RenderingInfo{
+        .render_area = vk.Rect2D{
+            .offset = vk.Offset2D{ .x = 0, .y = 0 },
+            .extent = render_extent,
+        },
+        .layer_count = 1,
+        .color_attachment_count = 1,
+        .p_color_attachments = &color_attachment,
+        .p_depth_attachment = &depth_attachment,
+    };
+}
+
 // VkImageSubresourceRange vkinit::image_subresource_range(VkImageAspectFlags aspectMask)
 // {
 //     VkImageSubresourceRange subImage {};
@@ -266,6 +300,16 @@ fn attachmentInfo(
 
 //     return subImage;
 // }
+
+fn imageSubresourceRange(aspect_mask: vk.ImageAspectFlags) !vk.ImageSubresourceRange {
+    return vk.ImageSubresourceRange{
+        .aspect_mask = aspect_mask,
+        .base_mip_level = 0,
+        .level_count = vk.REMAINING_ARRAY_LAYERS,
+        .base_array_layer = 0,
+        .layer_count = vk.REMAINING_MIP_LEVELS,
+    };
+}
 
 // VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(VkDescriptorType type, VkShaderStageFlags stageFlags,
 //     uint32_t binding)
@@ -280,6 +324,19 @@ fn attachmentInfo(
 //     return setbind;
 // }
 
+fn descriptorSetLayoutBinding(
+    descriptor_type: vk.DescriptorType,
+    stage_flags: vk.ShaderStageFlags,
+    binding: u32,
+) !vk.DescriptorSetLayoutBinding {
+    return vk.DescriptorSetLayoutBinding{
+        .binding = binding,
+        .descriptor_count = 1,
+        .descriptor_type = descriptor_type,
+        .stage_flags = stage_flags,
+    };
+}
+
 // VkDescriptorSetLayoutCreateInfo vkinit::descriptorset_layout_create_info(VkDescriptorSetLayoutBinding* bindings,
 //     uint32_t bindingCount)
 // {
@@ -293,6 +350,15 @@ fn attachmentInfo(
 
 //     return info;
 // }
+
+fn descriptorSetLayoutCreateInfo(
+    bindings: []vk.DescriptorSetLayoutBinding,
+) !vk.DescriptorSetLayoutCreateInfo {
+    return vk.DescriptorSetLayoutCreateInfo{
+        .p_bindings = bindings.ptr,
+        .binding_count = bindings.len,
+    };
+}
 
 // VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet,
 //     VkDescriptorImageInfo* imageInfo, uint32_t binding)
@@ -310,6 +376,21 @@ fn attachmentInfo(
 //     return write;
 // }
 
+fn writeDescriptorImage(
+    descriptor_type: vk.DescriptorType,
+    dst_set: vk.DescriptorSet,
+    image_info: vk.DescriptorImageInfo,
+    binding: u32,
+) !vk.WriteDescriptorSet {
+    return vk.WriteDescriptorSet{
+        .dst_binding = binding,
+        .dst_set = dst_set,
+        .descriptor_count = 1,
+        .descriptor_type = descriptor_type,
+        .p_image_info = &image_info,
+    };
+}
+
 // VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet,
 //     VkDescriptorBufferInfo* bufferInfo, uint32_t binding)
 // {
@@ -326,6 +407,21 @@ fn attachmentInfo(
 //     return write;
 // }
 
+fn writeDescriptorBuffer(
+    descriptor_type: vk.DescriptorType,
+    dst_set: vk.DescriptorSet,
+    buffer_info: vk.DescriptorBufferInfo,
+    binding: u32,
+) !vk.WriteDescriptorSet {
+    return vk.WriteDescriptorSet{
+        .dst_binding = binding,
+        .dst_set = dst_set,
+        .descriptor_count = 1,
+        .descriptor_type = descriptor_type,
+        .p_buffer_info = &buffer_info,
+    };
+}
+
 // VkDescriptorBufferInfo vkinit::buffer_info(VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range)
 // {
 //     VkDescriptorBufferInfo binfo {};
@@ -334,6 +430,14 @@ fn attachmentInfo(
 //     binfo.range = range;
 //     return binfo;
 // }
+
+fn bufferInfo(buffer: vk.Buffer, offset: vk.DeviceSize, range: vk.DeviceSize) !vk.DescriptorBufferInfo {
+    return vk.DescriptorBufferInfo{
+        .buffer = buffer,
+        .offset = offset,
+        .range = range,
+    };
+}
 
 // VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
 // {
@@ -359,6 +463,23 @@ fn attachmentInfo(
 //     return info;
 // }
 
+fn imageCreateInfo(
+    format: vk.Format,
+    usage_flags: vk.ImageUsageFlags,
+    extent: vk.Extent3D,
+) !vk.ImageCreateInfo {
+    return vk.ImageCreateInfo{
+        .image_type = .@"2d",
+        .format = format,
+        .extent = extent,
+        .mip_levels = 1,
+        .array_layers = 1,
+        .samples = .{ .@"1_bit" = true },
+        .tiling = .optimal,
+        .usage = usage_flags,
+    };
+}
+
 // VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
 // {
 //     // build a image-view for the depth image to use for rendering
@@ -377,6 +498,26 @@ fn attachmentInfo(
 
 //     return info;
 // }
+
+fn imageViewCreateInfo(
+    format: vk.Format,
+    image: vk.Image,
+    aspect_flags: vk.ImageAspectFlags,
+) !vk.ImageViewCreateInfo {
+    return vk.ImageViewCreateInfo{
+        .view_type = .@"2d",
+        .image = image,
+        .format = format,
+        .subresource_range = vk.ImageSubresourceRange{
+            .base_mip_level = 0,
+            .level_count = 1,
+            .base_array_layer = 0,
+            .layer_count = 1,
+            .aspect_mask = aspect_flags,
+        },
+    };
+}
+
 // VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info()
 // {
 //     VkPipelineLayoutCreateInfo info {};
@@ -391,6 +532,10 @@ fn attachmentInfo(
 //     info.pPushConstantRanges = nullptr;
 //     return info;
 // }
+
+fn pipelineLayoutCreateInfo() !vk.PipelineLayoutCreateInfo {
+    return vk.PipelineLayoutCreateInfo{};
+}
 
 // VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShaderStageFlagBits stage,
 //     VkShaderModule shaderModule,
@@ -408,3 +553,15 @@ fn attachmentInfo(
 //     info.pName = entry;
 //     return info;
 // }
+
+fn pipelineShaderStageCreateInfo(
+    stage: vk.ShaderStageFlagBits,
+    shader_module: vk.ShaderModule,
+    entry: []const u8,
+) !vk.PipelineShaderStageCreateInfo {
+    return vk.PipelineShaderStageCreateInfo{
+        .stage = stage,
+        .module = shader_module,
+        .p_name = entry,
+    };
+}
