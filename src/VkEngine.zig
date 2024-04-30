@@ -1,15 +1,18 @@
 const std = @import("std");
-const vk = @import("vulkan");
 const glfw = @import("mach-glfw");
 
 const Swapchain = @import("swapchain.zig").Swapchain;
 const GraphicsContext = @import("graphics_context.zig").GraphicsContext;
+const vk = @import("vulkan.zig");
 
 const Self = @This();
 
 const FrameData = struct {
     command_pool: vk.CommandPool,
     main_command_buffer: vk.CommandBuffer,
+    swapchain_semaphore: vk.Semaphore,
+    render_semaphore: vk.Semaphore,
+    render_fence: vk.Fence,
 };
 
 const frame_overlap = 2;

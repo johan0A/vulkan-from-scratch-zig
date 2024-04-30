@@ -26,10 +26,6 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("mach-glfw", mach_glfw_dep.module("mach-glfw"));
 
-    // Use pre-generated Vulkan bindings.
-    const vulkan_dep = b.dependency("vulkan-zig-generated", .{});
-    exe.root_module.addImport("vulkan", vulkan_dep.module("vulkan-zig-generated"));
-
     //-----------
     // // Compile the vertex shader at build time so that it can be imported with '@embedFile'.
     // const compile_vert_shader = b.addSystemCommand(&.{"glslc"});

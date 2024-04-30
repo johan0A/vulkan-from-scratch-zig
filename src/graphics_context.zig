@@ -1,94 +1,35 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const glfw = @import("mach-glfw");
-const vk = @import("vulkan");
+const vk = @import("vulkan.zig");
+// const c = @import("c.zig");
 const Allocator = std.mem.Allocator;
 
-const required_device_extensions = [_][*:0]const u8{
-    vk.extension_info.khr_swapchain.name,
+const required_device_extensions = [_][*:0]const u8{vk.extensions.khr_swapchain.name};
+
+const optional_instance_extensions = [_][*:0]const u8{vk.extensions.khr_get_physical_device_properties_2.name};
+
+/// To construct base, instance and device wrappers for vulkan-zig, you need to pass a list of 'apis' to it.
+const apis: []const vk.ApiInfo = &.{
+    // You can either add invidiual functions by manually creating an 'api'
+    .{
+        .base_commands = .{
+            .createInstance = true,
+        },
+        .instance_commands = .{
+            .createDevice = true,
+        },
+    },
+    // Or you can add entire feature sets or extensions
+    vk.features.version_1_0,
+    vk.extensions.khr_surface,
+    vk.extensions.khr_swapchain,
 };
 
-const optional_device_extensions = [_][*:0]const u8{};
-
-const optional_instance_extensions = [_][*:0]const u8{
-    vk.extension_info.khr_get_physical_device_properties_2.name,
-};
-
-const BaseDispatch = vk.BaseWrapper(.{
-    .createInstance = true,
-    .enumerateInstanceExtensionProperties = true,
-    .enumerateInstanceLayerProperties = true,
-    .getInstanceProcAddr = true,
-});
-
-const InstanceDispatch = vk.InstanceWrapper(.{
-    .destroyInstance = true,
-    .createDevice = true,
-    .destroySurfaceKHR = true,
-    .enumeratePhysicalDevices = true,
-    .getPhysicalDeviceProperties = true,
-    .enumerateDeviceExtensionProperties = true,
-    .getPhysicalDeviceSurfaceFormatsKHR = true,
-    .getPhysicalDeviceSurfacePresentModesKHR = true,
-    .getPhysicalDeviceSurfaceCapabilitiesKHR = true,
-    .getPhysicalDeviceQueueFamilyProperties = true,
-    .getPhysicalDeviceSurfaceSupportKHR = true,
-    .getPhysicalDeviceMemoryProperties = true,
-    .getDeviceProcAddr = true,
-});
-
-const DeviceDispatch = vk.DeviceWrapper(.{
-    .destroyDevice = true,
-    .getDeviceQueue = true,
-    .createSemaphore = true,
-    .createFence = true,
-    .createImageView = true,
-    .destroyImageView = true,
-    .destroySemaphore = true,
-    .destroyFence = true,
-    .getSwapchainImagesKHR = true,
-    .createSwapchainKHR = true,
-    .destroySwapchainKHR = true,
-    .acquireNextImageKHR = true,
-    .deviceWaitIdle = true,
-    .waitForFences = true,
-    .resetFences = true,
-    .queueSubmit = true,
-    .queuePresentKHR = true,
-    .createCommandPool = true,
-    .destroyCommandPool = true,
-    .allocateCommandBuffers = true,
-    .freeCommandBuffers = true,
-    .queueWaitIdle = true,
-    .createShaderModule = true,
-    .destroyShaderModule = true,
-    .createPipelineLayout = true,
-    .destroyPipelineLayout = true,
-    .createRenderPass = true,
-    .destroyRenderPass = true,
-    .createGraphicsPipelines = true,
-    .destroyPipeline = true,
-    .createFramebuffer = true,
-    .destroyFramebuffer = true,
-    .beginCommandBuffer = true,
-    .endCommandBuffer = true,
-    .allocateMemory = true,
-    .freeMemory = true,
-    .createBuffer = true,
-    .destroyBuffer = true,
-    .getBufferMemoryRequirements = true,
-    .mapMemory = true,
-    .unmapMemory = true,
-    .bindBufferMemory = true,
-    .cmdBeginRenderPass = true,
-    .cmdEndRenderPass = true,
-    .cmdBindPipeline = true,
-    .cmdDraw = true,
-    .cmdSetViewport = true,
-    .cmdSetScissor = true,
-    .cmdBindVertexBuffers = true,
-    .cmdCopyBuffer = true,
-});
+/// Next, pass the `apis` to the wrappers to create dispatch tables.
+const BaseDispatch = vk.BaseWrapper(apis);
+const InstanceDispatch = vk.InstanceWrapper(apis);
+const DeviceDispatch = vk.DeviceWrapper(apis);
 
 pub const GraphicsContext = struct {
     const Self = @This();
@@ -116,6 +57,14 @@ pub const GraphicsContext = struct {
         var self: GraphicsContext = undefined;
         self.allocator = allocator;
         self.base_dispatch = try BaseDispatch.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(&glfw.getInstanceProcAddress)));
+
+        const app_info = vk.ApplicationInfo{
+            .p_application_name = app_name,
+            .application_version = vk.makeApiVersion(0, 0, 0, 0),
+            .p_engine_name = app_name,
+            .engine_version = vk.makeApiVersion(0, 0, 0, 0),
+            .api_version = vk.API_VERSION_1_2,
+        };
 
         const glfw_exts = glfw.getRequiredInstanceExtensions() orelse return blk: {
             const err = glfw.mustGetError();
@@ -146,14 +95,6 @@ pub const GraphicsContext = struct {
             }
         }
 
-        const app_info = vk.ApplicationInfo{
-            .p_application_name = app_name,
-            .application_version = vk.makeApiVersion(0, 0, 0, 0),
-            .p_engine_name = app_name,
-            .engine_version = vk.makeApiVersion(0, 0, 0, 0),
-            .api_version = vk.makeApiVersion(0, 1, 1, 0),
-        };
-
         if (use_validation_layers and !try self.checkValidationLayerSupport()) {
             std.log.err("validation layers requested, but not available!", .{});
             return error.ValidationLayersNotAvailable;
@@ -179,7 +120,7 @@ pub const GraphicsContext = struct {
         const candidate = try pickPhysicalDevice(self.instance_dispatch, self.instance, allocator, self.surface);
         self.phys_device = candidate.pdev;
         self.phys_device_props = candidate.props;
-        self.device = try initializeCandidate(allocator, self.instance_dispatch, candidate);
+        self.device = try initializeCandidate(self.instance_dispatch, candidate);
         self.device_dispatch = try DeviceDispatch.load(self.device, self.instance_dispatch.dispatch.vkGetDeviceProcAddr);
         errdefer self.device_dispatch.destroyDevice(self.device, null);
 
@@ -191,28 +132,27 @@ pub const GraphicsContext = struct {
         return self;
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: GraphicsContext) void {
         self.device_dispatch.destroyDevice(self.device, null);
         self.instance_dispatch.destroySurfaceKHR(self.instance, self.surface, null);
         self.instance_dispatch.destroyInstance(self.instance, null);
     }
 
-    pub fn deviceName(self: Self) []const u8 {
-        const len = std.mem.indexOfScalar(u8, &self.phys_device_props.device_name, 0).?;
-        return self.phys_device_props.device_name[0..len];
+    pub fn deviceName(self: *const GraphicsContext) []const u8 {
+        return std.mem.sliceTo(&self.phys_device_props.device_name, 0);
     }
 
-    pub fn findMemoryTypeIndex(self: Self, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
+    pub fn findMemoryTypeIndex(self: GraphicsContext, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
         for (self.phys_device_mem_props.memory_types[0..self.phys_device_mem_props.memory_type_count], 0..) |mem_type, i| {
-            if (memory_type_bits & (@as(u32, 1) << @as(u5, @truncate(i))) != 0 and mem_type.property_flags.contains(flags)) {
-                return @as(u32, @truncate(i));
+            if (memory_type_bits & (@as(u32, 1) << @truncate(i)) != 0 and mem_type.property_flags.contains(flags)) {
+                return @truncate(i);
             }
         }
 
         return error.NoSuitableMemoryType;
     }
 
-    pub fn allocate(self: Self, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
+    pub fn allocate(self: GraphicsContext, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
         return try self.device_dispatch.allocateMemory(self.device, &.{
             .allocation_size = requirements.size,
             .memory_type_index = try self.findMemoryTypeIndex(requirements.memory_type_bits, flags),
@@ -262,17 +202,15 @@ fn createSurface(instance: vk.Instance, window: glfw.Window) !vk.SurfaceKHR {
     return surface;
 }
 
-fn initializeCandidate(allocator: Allocator, vki: InstanceDispatch, candidate: DeviceCandidate) !vk.Device {
+fn initializeCandidate(vki: InstanceDispatch, candidate: DeviceCandidate) !vk.Device {
     const priority = [_]f32{1};
     const qci = [_]vk.DeviceQueueCreateInfo{
         .{
-            .flags = .{},
             .queue_family_index = candidate.queues.graphics_family,
             .queue_count = 1,
             .p_queue_priorities = &priority,
         },
         .{
-            .flags = .{},
             .queue_family_index = candidate.queues.present_family,
             .queue_count = 1,
             .p_queue_priorities = &priority,
@@ -280,41 +218,15 @@ fn initializeCandidate(allocator: Allocator, vki: InstanceDispatch, candidate: D
     };
 
     const queue_count: u32 = if (candidate.queues.graphics_family == candidate.queues.present_family)
-        1 // nvidia
+        1
     else
-        2; // amd
-
-    var device_extensions = try std.ArrayList([*:0]const u8).initCapacity(allocator, required_device_extensions.len);
-    defer device_extensions.deinit();
-
-    try device_extensions.appendSlice(required_device_extensions[0..required_device_extensions.len]);
-
-    var count: u32 = undefined;
-    _ = try vki.enumerateDeviceExtensionProperties(candidate.pdev, null, &count, null);
-
-    const propsv = try allocator.alloc(vk.ExtensionProperties, count);
-    defer allocator.free(propsv);
-
-    _ = try vki.enumerateDeviceExtensionProperties(candidate.pdev, null, &count, propsv.ptr);
-
-    for (optional_device_extensions) |extension_name| {
-        for (propsv) |prop| {
-            if (std.mem.eql(u8, prop.extension_name[0..prop.extension_name.len], std.mem.span(extension_name))) {
-                try device_extensions.append(extension_name);
-                break;
-            }
-        }
-    }
+        2;
 
     return try vki.createDevice(candidate.pdev, &.{
-        .flags = .{},
         .queue_create_info_count = queue_count,
         .p_queue_create_infos = &qci,
-        .enabled_layer_count = 0,
-        .pp_enabled_layer_names = undefined,
-        .enabled_extension_count = @as(u32, @intCast(device_extensions.items.len)),
-        .pp_enabled_extension_names = @as([*]const [*:0]const u8, @ptrCast(device_extensions.items)),
-        .p_enabled_features = null,
+        .enabled_extension_count = required_device_extensions.len,
+        .pp_enabled_extension_names = @as([*]const [*:0]const u8, @ptrCast(&required_device_extensions)),
     }, null);
 }
 
@@ -391,7 +303,7 @@ fn allocateQueues(vki: InstanceDispatch, pdev: vk.PhysicalDevice, allocator: All
     var present_family: ?u32 = null;
 
     for (families, 0..) |properties, i| {
-        const family = @as(u32, @intCast(i));
+        const family: u32 = @intCast(i);
 
         if (graphics_family == null and properties.queue_flags.graphics_bit) {
             graphics_family = family;
@@ -430,16 +342,14 @@ fn checkExtensionSupport(
     var count: u32 = undefined;
     _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, null);
 
-    const extension_props = try allocator.alloc(vk.ExtensionProperties, count);
-    defer allocator.free(extension_props);
+    const propsv = try allocator.alloc(vk.ExtensionProperties, count);
+    defer allocator.free(propsv);
 
-    _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, extension_props.ptr);
+    _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, propsv.ptr);
 
     for (required_device_extensions) |ext| {
-        for (extension_props) |extension_prop| {
-            const len = std.mem.indexOfScalar(u8, &extension_prop.extension_name, 0).?;
-            const prop_extension_name = extension_prop.extension_name[0..len];
-            if (std.mem.eql(u8, std.mem.span(ext), prop_extension_name)) {
+        for (propsv) |props| {
+            if (std.mem.eql(u8, std.mem.span(ext), std.mem.sliceTo(&props.extension_name, 0))) {
                 break;
             }
         } else {
