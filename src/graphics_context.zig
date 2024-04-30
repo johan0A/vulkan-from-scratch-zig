@@ -2,10 +2,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const glfw = @import("mach-glfw");
 const vk = @import("vulkan.zig");
-// const c = @import("c.zig");
 const Allocator = std.mem.Allocator;
 
 const required_device_extensions = [_][*:0]const u8{vk.extensions.khr_swapchain.name};
+const optional_device_extensions = [_][*:0]const u8{};
 
 const optional_instance_extensions = [_][*:0]const u8{vk.extensions.khr_get_physical_device_properties_2.name};
 
@@ -120,7 +120,7 @@ pub const GraphicsContext = struct {
         const candidate = try pickPhysicalDevice(self.instance_dispatch, self.instance, allocator, self.surface);
         self.phys_device = candidate.pdev;
         self.phys_device_props = candidate.props;
-        self.device = try initializeCandidate(self.instance_dispatch, candidate);
+        self.device = try initializeCandidate(allocator, self.instance_dispatch, candidate);
         self.device_dispatch = try DeviceDispatch.load(self.device, self.instance_dispatch.dispatch.vkGetDeviceProcAddr);
         errdefer self.device_dispatch.destroyDevice(self.device, null);
 
@@ -132,17 +132,17 @@ pub const GraphicsContext = struct {
         return self;
     }
 
-    pub fn deinit(self: GraphicsContext) void {
+    pub fn deinit(self: Self) void {
         self.device_dispatch.destroyDevice(self.device, null);
         self.instance_dispatch.destroySurfaceKHR(self.instance, self.surface, null);
         self.instance_dispatch.destroyInstance(self.instance, null);
     }
 
-    pub fn deviceName(self: *const GraphicsContext) []const u8 {
+    pub fn deviceName(self: *const Self) []const u8 {
         return std.mem.sliceTo(&self.phys_device_props.device_name, 0);
     }
 
-    pub fn findMemoryTypeIndex(self: GraphicsContext, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
+    pub fn findMemoryTypeIndex(self: Self, memory_type_bits: u32, flags: vk.MemoryPropertyFlags) !u32 {
         for (self.phys_device_mem_props.memory_types[0..self.phys_device_mem_props.memory_type_count], 0..) |mem_type, i| {
             if (memory_type_bits & (@as(u32, 1) << @truncate(i)) != 0 and mem_type.property_flags.contains(flags)) {
                 return @truncate(i);
@@ -152,7 +152,7 @@ pub const GraphicsContext = struct {
         return error.NoSuitableMemoryType;
     }
 
-    pub fn allocate(self: GraphicsContext, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
+    pub fn allocate(self: Self, requirements: vk.MemoryRequirements, flags: vk.MemoryPropertyFlags) !vk.DeviceMemory {
         return try self.device_dispatch.allocateMemory(self.device, &.{
             .allocation_size = requirements.size,
             .memory_type_index = try self.findMemoryTypeIndex(requirements.memory_type_bits, flags),
@@ -202,7 +202,7 @@ fn createSurface(instance: vk.Instance, window: glfw.Window) !vk.SurfaceKHR {
     return surface;
 }
 
-fn initializeCandidate(vki: InstanceDispatch, candidate: DeviceCandidate) !vk.Device {
+fn initializeCandidate(allocator: Allocator, vki: InstanceDispatch, candidate: DeviceCandidate) !vk.Device {
     const priority = [_]f32{1};
     const qci = [_]vk.DeviceQueueCreateInfo{
         .{
@@ -218,15 +218,37 @@ fn initializeCandidate(vki: InstanceDispatch, candidate: DeviceCandidate) !vk.De
     };
 
     const queue_count: u32 = if (candidate.queues.graphics_family == candidate.queues.present_family)
-        1
+        1 // nvidia
     else
-        2;
+        2; // amd
+
+    var device_extensions = try std.ArrayList([*:0]const u8).initCapacity(allocator, required_device_extensions.len);
+    defer device_extensions.deinit();
+
+    try device_extensions.appendSlice(required_device_extensions[0..required_device_extensions.len]);
+
+    var count: u32 = undefined;
+    _ = try vki.enumerateDeviceExtensionProperties(candidate.pdev, null, &count, null);
+
+    const propsv = try allocator.alloc(vk.ExtensionProperties, count);
+    defer allocator.free(propsv);
+
+    _ = try vki.enumerateDeviceExtensionProperties(candidate.pdev, null, &count, propsv.ptr);
+
+    for (optional_device_extensions) |extension_name| {
+        for (propsv) |prop| {
+            if (std.mem.eql(u8, prop.extension_name[0..prop.extension_name.len], std.mem.span(extension_name))) {
+                try device_extensions.append(extension_name);
+                break;
+            }
+        }
+    }
 
     return try vki.createDevice(candidate.pdev, &.{
         .queue_create_info_count = queue_count,
         .p_queue_create_infos = &qci,
         .enabled_extension_count = required_device_extensions.len,
-        .pp_enabled_extension_names = @as([*]const [*:0]const u8, @ptrCast(&required_device_extensions)),
+        .pp_enabled_extension_names = @as([*]const [*:0]const u8, @ptrCast(device_extensions.items)),
     }, null);
 }
 
@@ -342,14 +364,14 @@ fn checkExtensionSupport(
     var count: u32 = undefined;
     _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, null);
 
-    const propsv = try allocator.alloc(vk.ExtensionProperties, count);
-    defer allocator.free(propsv);
+    const extension_props = try allocator.alloc(vk.ExtensionProperties, count);
+    defer allocator.free(extension_props);
 
-    _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, propsv.ptr);
+    _ = try vki.enumerateDeviceExtensionProperties(pdev, null, &count, extension_props.ptr);
 
     for (required_device_extensions) |ext| {
-        for (propsv) |props| {
-            if (std.mem.eql(u8, std.mem.span(ext), std.mem.sliceTo(&props.extension_name, 0))) {
+        for (extension_props) |extension_prop| {
+            if (std.mem.eql(u8, std.mem.span(ext), std.mem.sliceTo(&extension_prop.extension_name, 0))) {
                 break;
             }
         } else {
