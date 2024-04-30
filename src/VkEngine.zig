@@ -88,7 +88,7 @@ pub fn initCommands(self: *Self) !void {
             &vk_initializers.commandBufferAllocateInfo(frame.command_pool, 1),
             @ptrCast(&frame.main_command_buffer),
         );
-        // errdefer self.gc.device_dispatch.freeCommandBuffers(self.gc.device, frame.command_pool, 1, &frame.main_command_buffer);
+        errdefer self.gc.device_dispatch.freeCommandBuffers(self.gc.device, frame.command_pool, 1, &frame.main_command_buffer);
     }
 }
 
